@@ -1,0 +1,64 @@
+# Sample workflow for building and deploying a Next.js site to GitHub Pages
+#
+# To get started with Next.js see: https://nextjs.org/docs/getting-started
+#
+name: Deploy Next.js site to Pages
+
+on:
+  # Runs on pushes targeting the default branch
+  push:
+    branches: ["develop"]
+
+  workflow_dispatch:
+
+
+jobs:
+  # Build job
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Docker build
+        run: docker build -t to-do-list -f docker/Dockerfile .
+
+  registry:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Save Docker image
+        run: docker save to-do-list > to-do-list.tar
+
+      - name: Copy Docker image to server via SCP
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "to-do-list.tar"
+          target: "/tmp"
+
+      - name: Load Docker image on server via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            docker load < /tmp/to-do-list.tar
+
+  deploy:
+    needs: registry
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run on remote server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            docker stop to-do-list
+            docker rm to-do-list
+            docker run -d -p 3000:3000 --name to-do-list to-do-list
+            docker ps
+
+  
