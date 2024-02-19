@@ -1,76 +1,47 @@
-# Sample workflow for building and deploying a Next.js site to GitHub Pages
-#
-# To get started with Next.js see: https://nextjs.org/docs/getting-started
-#
-name: Deploy Next.js site to Pages
+name: Docker
 
 on:
-  # Runs on pushes targeting the default branch
   push:
-    branches: ["develop"]
-
-  workflow_dispatch:
-
+    branches: [ develop ]
 
 jobs:
-  # Build job
   build:
     runs-on: ubuntu-latest
-    services:
-      docker:
-        image: docker:24.0.7
-        options: --privileged
+
     steps:
-      - name: Docker build
-        run: docker build -t to-do-list -f docker/Dockerfile .
+    - uses: actions/checkout@v2
 
-  registry:
-    needs: build
-    runs-on: ubuntu-latest
-    services:
-      docker:
-        image: docker:24.0.7
-        options: --privileged
-    steps:
-      - name: Save Docker image
-        run: docker save to-do-list > to-do-list.tar
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
 
-      - name: Copy Docker image to server via SCP
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          source: "to-do-list.tar"
-          target: "/tmp"
+    - name: Build Docker image
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        file: ./docker/Dockerfile
+        load: true
+        tags: to-do-list:production
 
-      - name: Load Docker image on server via SSH
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            docker load < /tmp/to-do-list.tar
+    - name: Save Docker image
+      run: |
+        mkdir -p docker-image
+        docker save to-do-list:production > docker-image/to-do-list.tar
 
-  deploy:
-    needs: registry
-    runs-on: ubuntu-latest
-    services:
-      docker:
-        image: docker:24.0.7
-        options: --privileged
-    steps:
-      - name: Run on remote server
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            docker stop to-do-list
-            docker rm to-do-list
-            docker run -d -p 3000:3000 --name to-do-list to-do-list
-            docker ps
+    - name: Copy Docker image to VPS
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_KEY }}
+        source: "docker-image/to-do-list.tar"
+        target: "/home/adavid"
 
-  
+    - name: Load and run Docker image on VPS
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_KEY }}
+        script: |
+          docker load < /home/adavid/docker-image/to-do-list.tar
+          docker run -d -p 3000:3000 to-do-list:production
