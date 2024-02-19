@@ -16,6 +16,10 @@ jobs:
   # Build job
   build:
     runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:24.0.7
+        options: --privileged
     steps:
       - name: Docker build
         run: docker build -t to-do-list -f docker/Dockerfile .
@@ -23,6 +27,10 @@ jobs:
   registry:
     needs: build
     runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:24.0.7
+        options: --privileged
     steps:
       - name: Save Docker image
         run: docker save to-do-list > to-do-list.tar
@@ -48,6 +56,10 @@ jobs:
   deploy:
     needs: registry
     runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:24.0.7
+        options: --privileged
     steps:
       - name: Run on remote server
         uses: appleboy/ssh-action@master
