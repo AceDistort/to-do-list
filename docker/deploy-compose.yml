@@ -1,0 +1,38 @@
+version: '3'
+
+services:
+
+  ## Database
+
+  nutriall-database:
+    image: mysql:8.0
+    container_name: to-do-list-database
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=to-do-list
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+    ports:
+      - "3002:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 3s
+      retries: 3
+
+  nutriall-phpmyadmin:
+    container_name: to-do-list-phpmyadmin
+    image: phpmyadmin/phpmyadmin
+    links:
+      - to-do-list-database
+    ports:
+      - "3003:80"
+    environment:
+      - PMA_HOST=to-do-list-database
+      - PMA_PORT=3306
+    depends_on:
+      nutriall-database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "localhost:80"]
+      timeout: 3s
+      retries: 3
