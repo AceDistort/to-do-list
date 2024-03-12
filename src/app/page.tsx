@@ -1,17 +1,26 @@
+'use client';
+
 import Image from "next/image";
 import styles from "./page.module.css";
+import {signIn, signOut, useSession} from "next-auth/react";
 
 export default function Home() {
+
+  const { data: session } = useSession();
+
   return (
     <main className={styles.main}>
       <div className={styles.description}>
         <p>
           Get started by editing&nbsp;
           <code className={styles.code}>src/app/page.tsx</code>
+          {session && <p>Signed in as {session?.user?.email}</p>}
+          <button className="button" onClick={() => signIn()}>SignIn</button>
+          {session && <button className="button" onClick={() => signOut()}>SignOut</button>}
         </p>
         <div>
           <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
+              href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
             target="_blank"
             rel="noopener noreferrer"
           >
